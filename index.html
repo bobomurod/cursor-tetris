@@ -224,6 +224,12 @@
             height: 100%;
             font-size: 20px;
         }
+
+        /* Добавление сетки как background-image */
+        .grid-bg {
+            background-image: linear-gradient(#1e2446 1px, transparent 1px), 
+                             linear-gradient(90deg, #1e2446 1px, transparent 1px);
+        }
     </style>
 </head>
 <body>
@@ -232,7 +238,7 @@
         
         <div class="game-area">
             <div class="game-board">
-                <canvas id="tetris" width="300" height="600"></canvas>
+                <canvas id="tetris" width="300" height="600" class="grid-bg"></canvas>
                 
                 <div class="game-over-overlay" id="game-over">
                     <div class="game-over-text">Игра окончена!</div>
@@ -309,11 +315,19 @@
             const restartButton = document.getElementById('restart-button');
             const gameOverElement = document.getElementById('game-over');
             
+            // Установка CSS сетки для канваса
+            const setGridBackground = () => {
+                canvas.style.backgroundSize = `${BLOCK_SIZE}px ${BLOCK_SIZE}px`;
+            };
+            
             // Константы игры
             const COLS = 10;
             const ROWS = 20;
             const BLOCK_SIZE = 30;
             const NEXT_BLOCK_SIZE = 30;
+            
+            // Устанавливаем сетку
+            setGridBackground();
             
             // Эмодзи для фигур
             const EMOJI = [
@@ -351,6 +365,41 @@
                 '#FF9800'  // Z
             ];
             
+            // Кэшируем эмодзи для улучшения производительности
+            const emojiCache = {};
+            
+            function generateEmojiCache() {
+                EMOJI.forEach((emoji, index) => {
+                    if (!emoji) return;
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = BLOCK_SIZE;
+                    tempCanvas.height = BLOCK_SIZE;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // Фон
+                    tempCtx.fillStyle = COLORS[index];
+                    tempCtx.fillRect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
+                    
+                    // Рамка
+                    tempCtx.strokeStyle = '#fff';
+                    tempCtx.lineWidth = 1;
+                    tempCtx.strokeRect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
+                    
+                    // Эмодзи
+                    tempCtx.font = '20px Arial';
+                    tempCtx.textAlign = 'center';
+                    tempCtx.textBaseline = 'middle';
+                    tempCtx.fillStyle = '#fff';
+                    tempCtx.fillText(emoji, BLOCK_SIZE / 2, BLOCK_SIZE / 2);
+                    
+                    emojiCache[index] = tempCanvas;
+                });
+            }
+            
+            // Генерируем кэш
+            generateEmojiCache();
+            
             // Переменные игры
             let board = createMatrix(COLS, ROWS);
             let nextPiece = null;
@@ -369,7 +418,7 @@
             let gameRunning = false;
             let gamePaused = false;
             let requestId = null;
-            let animationId = null;
+            let redrawNeeded = true;
             
             // Создание матрицы
             function createMatrix(w, h) {
@@ -399,6 +448,7 @@
                 updateScore();
                 playerReset();
                 gameOverElement.style.display = 'none';
+                redrawNeeded = true;
             }
             
             // Сброс игрока
@@ -415,6 +465,8 @@
                 if (collide(board, player)) {
                     gameOver();
                 }
+                
+                redrawNeeded = true;
             }
             
             // Конец игры
@@ -452,6 +504,7 @@
                         }
                     });
                 });
+                redrawNeeded = true;
             }
             
             // Вращение фигуры
@@ -473,6 +526,8 @@
                 } else {
                     matrix.reverse();
                 }
+                
+                redrawNeeded = true;
             }
             
             // Перемещение игрока
@@ -480,7 +535,10 @@
                 player.pos.x += dir;
                 if (collide(board, player)) {
                     player.pos.x -= dir;
+                    return false;
                 }
+                redrawNeeded = true;
+                return true;
             }
             
             // Поворот фигуры
@@ -495,9 +553,12 @@
                     if (offset > player.matrix[0].length) {
                         rotate(player.matrix, -dir);
                         player.pos.x = pos;
-                        return;
+                        return false;
                     }
                 }
+                
+                redrawNeeded = true;
+                return true;
             }
             
             // Опускание фигуры
@@ -509,8 +570,11 @@
                     playerReset();
                     sweepRows();
                     updateScore();
+                    return false;
                 }
+                redrawNeeded = true;
                 dropCounter = 0;
+                return true;
             }
             
             // Мгновенное падение
@@ -524,6 +588,7 @@
                 sweepRows();
                 updateScore();
                 dropCounter = 0;
+                redrawNeeded = true;
             }
             
             // Очистка заполненных рядов
@@ -547,6 +612,7 @@
                     player.lines += rowCount;
                     player.level = Math.floor(player.lines / 10) + 1;
                     dropInterval = 1000 * Math.pow(0.8, player.level - 1);
+                    redrawNeeded = true;
                 }
             }
             
@@ -557,7 +623,7 @@
                 linesElement.textContent = player.lines;
             }
             
-            // Отрисовка следующей фигуры
+            // Отрисовка следующей фигуры с использованием кэшированных изображений
             function drawNextPiece() {
                 nextPieceCtx.fillStyle = '#0f3460';
                 nextPieceCtx.fillRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
@@ -572,109 +638,64 @@
                 matrix.forEach((row, y) => {
                     row.forEach((value, x) => {
                         if (value !== 0) {
-                            // Фон ячейки
-                            nextPieceCtx.fillStyle = COLORS[type];
-                            nextPieceCtx.fillRect(
-                                offsetX + x * NEXT_BLOCK_SIZE,
-                                offsetY + y * NEXT_BLOCK_SIZE,
-                                NEXT_BLOCK_SIZE,
-                                NEXT_BLOCK_SIZE
-                            );
-                            
-                            // Рамка ячейки
-                            nextPieceCtx.strokeStyle = '#fff';
-                            nextPieceCtx.lineWidth = 1;
-                            nextPieceCtx.strokeRect(
-                                offsetX + x * NEXT_BLOCK_SIZE,
-                                offsetY + y * NEXT_BLOCK_SIZE,
-                                NEXT_BLOCK_SIZE,
-                                NEXT_BLOCK_SIZE
-                            );
-                            
-                            // Эмодзи
-                            nextPieceCtx.font = '20px Arial';
-                            nextPieceCtx.textAlign = 'center';
-                            nextPieceCtx.textBaseline = 'middle';
-                            nextPieceCtx.fillStyle = '#fff';
-                            nextPieceCtx.fillText(
-                                EMOJI[type],
-                                offsetX + x * NEXT_BLOCK_SIZE + NEXT_BLOCK_SIZE / 2,
-                                offsetY + y * NEXT_BLOCK_SIZE + NEXT_BLOCK_SIZE / 2
-                            );
+                            // Используем кэшированное изображение
+                            const cachedBlock = emojiCache[type];
+                            if (cachedBlock) {
+                                nextPieceCtx.drawImage(
+                                    cachedBlock,
+                                    offsetX + x * NEXT_BLOCK_SIZE,
+                                    offsetY + y * NEXT_BLOCK_SIZE,
+                                    NEXT_BLOCK_SIZE,
+                                    NEXT_BLOCK_SIZE
+                                );
+                            }
                         }
                     });
                 });
             }
             
-            // Отрисовка
+            // Отрисовка доски
             function draw() {
+                // Проверяем, нужно ли перерисовывать
+                if (!redrawNeeded) return;
+                
+                // Очищаем канвас
                 ctx.fillStyle = '#16213e';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Отрисовка сетки
-                ctx.strokeStyle = '#1e2446';
-                ctx.lineWidth = 1;
-                
-                for (let i = 0; i <= ROWS; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, i * BLOCK_SIZE);
-                    ctx.lineTo(canvas.width, i * BLOCK_SIZE);
-                    ctx.stroke();
-                }
-                
-                for (let i = 0; i <= COLS; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(i * BLOCK_SIZE, 0);
-                    ctx.lineTo(i * BLOCK_SIZE, canvas.height);
-                    ctx.stroke();
-                }
-                
+                // Отрисовка уже установленных блоков
                 drawMatrix(board, {x: 0, y: 0});
+                
+                // Отрисовка текущей фигуры
                 drawMatrix(player.matrix, player.pos, player.type);
+                
+                // Сбрасываем флаг необходимости перерисовки
+                redrawNeeded = false;
             }
             
-            // Отрисовка матрицы с эмодзи
+            // Отрисовка матрицы с эмодзи (оптимизированная)
             function drawMatrix(matrix, offset, type = null) {
                 matrix.forEach((row, y) => {
                     row.forEach((value, x) => {
                         if (value !== 0) {
                             const cellType = type || value;
+                            const cachedBlock = emojiCache[cellType];
                             
-                            // Фон ячейки
-                            ctx.fillStyle = COLORS[cellType];
-                            ctx.fillRect(
-                                (x + offset.x) * BLOCK_SIZE,
-                                (y + offset.y) * BLOCK_SIZE,
-                                BLOCK_SIZE,
-                                BLOCK_SIZE
-                            );
-                            
-                            // Рамка ячейки
-                            ctx.strokeStyle = '#fff';
-                            ctx.lineWidth = 1;
-                            ctx.strokeRect(
-                                (x + offset.x) * BLOCK_SIZE,
-                                (y + offset.y) * BLOCK_SIZE,
-                                BLOCK_SIZE,
-                                BLOCK_SIZE
-                            );
-                            
-                            // Эмодзи
-                            ctx.font = '20px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillStyle = '#fff';
-                            ctx.fillText(
-                                EMOJI[cellType],
-                                (x + offset.x) * BLOCK_SIZE + BLOCK_SIZE / 2,
-                                (y + offset.y) * BLOCK_SIZE + BLOCK_SIZE / 2
-                            );
+                            if (cachedBlock) {
+                                ctx.drawImage(
+                                    cachedBlock,
+                                    (x + offset.x) * BLOCK_SIZE,
+                                    (y + offset.y) * BLOCK_SIZE,
+                                    BLOCK_SIZE,
+                                    BLOCK_SIZE
+                                );
+                            }
                         }
                     });
                 });
             }
             
-            // Игровой цикл
+            // Игровой цикл (оптимизированный)
             function update(time = 0) {
                 if (!gameRunning || gamePaused) {
                     return;
@@ -688,7 +709,9 @@
                     playerDrop();
                 }
                 
+                // Только перерисовываем при необходимости
                 draw();
+                
                 requestId = requestAnimationFrame(update);
             }
             
@@ -705,11 +728,18 @@
                 }
             }
             
-            // Управление
+            // Оптимизированный обработчик клавиш с троттлингом
+            let keyThrottle = false;
+            const THROTTLE_DELAY = 50; // миллисекунды
+            
             document.addEventListener('keydown', event => {
-                if (!gameRunning || gamePaused) {
+                if (!gameRunning || gamePaused || keyThrottle) {
                     return;
                 }
+                
+                // Устанавливаем троттлинг
+                keyThrottle = true;
+                setTimeout(() => { keyThrottle = false; }, THROTTLE_DELAY);
                 
                 switch (event.keyCode) {
                     case 37: // Влево
