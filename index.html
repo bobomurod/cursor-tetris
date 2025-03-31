@@ -3,174 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тетрис с политиками</title>
+    <title>Эмодзи Тетрис</title>
     <style>
-        body {
-            background-color: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            color: white;
-            font-family: Arial, sans-serif;
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --accent-color: #0f3460;
+            --highlight-color: #e94560;
+            --text-color: #f1f1f1;
         }
         
-        .game-container {
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        }
+        
+        .container {
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 20px;
+            max-width: 1200px;
         }
         
-        .game-header {
+        .game-area {
             display: flex;
-            justify-content: space-between;
-            width: 300px;
-            margin-bottom: 20px;
+            gap: 40px;
+            align-items: flex-start;
         }
         
-        #score, #level, #lines {
-            font-size: 18px;
+        .game-board {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
         
         canvas {
-            border: 2px solid #555;
-            background-color: #000;
+            display: block;
+            background-color: var(--primary-color);
+        }
+        
+        .info-panel {
+            background-color: var(--primary-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .score-box {
+            background-color: var(--accent-color);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .score-label {
+            font-weight: 500;
+        }
+        
+        .score-value {
+            font-weight: 700;
+        }
+        
+        .next-piece {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .next-piece-label {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .next-piece-display {
+            width: 120px;
+            height: 120px;
+            background-color: var(--accent-color);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
         }
         
         .controls {
-            margin-top: 20px;
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .key {
+            background-color: var(--accent-color);
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            min-width: 40px;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .controls p {
-            margin: 5px 0;
-        }
-        
-        .game-over {
-            position: absolute;
-            font-size: 24px;
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 5px;
-            display: none;
+        .button-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
         }
         
         button {
-            background-color: #4CAF50;
-            border: none;
+            background-color: var(--highlight-color);
             color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 2px;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
             cursor: pointer;
-            border-radius: 5px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 1rem;
+            flex: 1;
         }
         
         button:hover {
-            background-color: #45a049;
+            background-color: #d6405e;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
         }
         
-        #loading {
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .game-over-overlay {
             position: absolute;
-            font-size: 24px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            display: none;
+        }
+        
+        .game-over-text {
+            font-size: 2.5rem;
+            color: var(--highlight-color);
+            text-align: center;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+        
+        .final-score {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+            }
+            
+            .info-panel {
+                width: 100%;
+            }
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            color: var(--highlight-color);
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .emoji-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            font-size: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="game-header">
-            <div>Счёт: <span id="score">0</span></div>
-            <div>Уровень: <span id="level">1</span></div>
-            <div>Линии: <span id="lines">0</span></div>
+    <div class="container">
+        <h1 class="title">Эмодзи Тетрис</h1>
+        
+        <div class="game-area">
+            <div class="game-board">
+                <canvas id="tetris" width="300" height="600"></canvas>
+                
+                <div class="game-over-overlay" id="game-over">
+                    <div class="game-over-text">Игра окончена!</div>
+                    <div class="final-score">Ваш счёт: <span id="final-score">0</span></div>
+                    <button id="restart-button">Играть снова</button>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="score-container">
+                    <div class="score-box">
+                        <span class="score-label">Счёт:</span>
+                        <span class="score-value" id="score">0</span>
+                    </div>
+                    <div class="score-box">
+                        <span class="score-label">Уровень:</span>
+                        <span class="score-value" id="level">1</span>
+                    </div>
+                    <div class="score-box">
+                        <span class="score-label">Линии:</span>
+                        <span class="score-value" id="lines">0</span>
+                    </div>
+                </div>
+                
+                <div class="next-piece">
+                    <div class="next-piece-label">Следующая фигура:</div>
+                    <canvas id="next-piece" width="120" height="120"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-item">
+                        <span class="key">←→</span>
+                        <span>Перемещение</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↑</span>
+                        <span>Поворот</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↓</span>
+                        <span>Ускорить</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">SPACE</span>
+                        <span>Мгновенное падение</span>
+                    </div>
+                </div>
+                
+                <div class="button-row">
+                    <button id="start-button">Начать игру</button>
+                    <button id="pause-button">Пауза</button>
+                </div>
+            </div>
         </div>
-        <canvas id="tetris" width="300" height="600"></canvas>
-        <div class="controls">
-            <button id="start-button">Начать игру</button>
-            <p>← → : Движение влево/вправо</p>
-            <p>↑ : Поворот</p>
-            <p>↓ : Ускорение падения</p>
-            <p>Пробел : Мгновенное падение</p>
-        </div>
-        <div id="game-over" class="game-over">
-            Игра окончена!<br>
-            <button id="restart-button">Играть снова</button>
-        </div>
-        <div id="loading">Загрузка изображений...</div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Основной канвас
             const canvas = document.getElementById('tetris');
-            const context = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d');
+            
+            // Канвас для следующей фигуры
+            const nextPieceCanvas = document.getElementById('next-piece');
+            const nextPieceCtx = nextPieceCanvas.getContext('2d');
+            
+            // Элементы интерфейса
             const scoreElement = document.getElementById('score');
             const levelElement = document.getElementById('level');
             const linesElement = document.getElementById('lines');
+            const finalScoreElement = document.getElementById('final-score');
             const startButton = document.getElementById('start-button');
+            const pauseButton = document.getElementById('pause-button');
             const restartButton = document.getElementById('restart-button');
             const gameOverElement = document.getElementById('game-over');
-            const loadingElement = document.getElementById('loading');
             
             // Константы игры
             const COLS = 10;
             const ROWS = 20;
             const BLOCK_SIZE = 30;
+            const NEXT_BLOCK_SIZE = 30;
             
-            // Изображения политиков (используем открытые URL-ы изображений)
-            const POLITICIAN_IMAGES = [
-                null, // Первый элемент пустой, чтобы индексы совпадали с SHAPES
-                'https://i.imgur.com/RP5kBnE.jpg', // Путин
-                'https://i.imgur.com/6PQLXDX.jpg', // Байден
-                'https://i.imgur.com/JuL0b8A.jpg', // Трамп
-                'https://i.imgur.com/ZcxrVl4.jpg', // Меркель
-                'https://i.imgur.com/WxVf3Q4.jpg', // Макрон
-                'https://i.imgur.com/QMR5t8g.jpg', // Джонсон
-                'https://i.imgur.com/wKDX2F5.jpg'  // Зеленский
+            // Эмодзи для фигур
+            const EMOJI = [
+                null,    // Пустая клетка
+                '🔥',    // I - огонь
+                '💎',    // J - кристалл
+                '🍉',    // L - арбуз
+                '🚀',    // O - ракета
+                '⭐',    // S - звезда
+                '🍄',    // T - гриб
+                '🎮'     // Z - джойстик
             ];
             
-            // Загрузка изображений
-            const images = [null];
-            let imagesLoaded = 0;
-            
-            for (let i = 1; i < POLITICIAN_IMAGES.length; i++) {
-                const img = new Image();
-                img.src = POLITICIAN_IMAGES[i];
-                img.onload = () => {
-                    imagesLoaded++;
-                    if (imagesLoaded === POLITICIAN_IMAGES.length - 1) {
-                        loadingElement.style.display = 'none';
-                    }
-                };
-                img.onerror = () => {
-                    // В случае ошибки загрузки изображения, создаем цветной квадрат
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = BLOCK_SIZE;
-                    tempCanvas.height = BLOCK_SIZE;
-                    const tempContext = tempCanvas.getContext('2d');
-                    const colors = ['#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
-                    tempContext.fillStyle = colors[i - 1];
-                    tempContext.fillRect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
-                    tempContext.strokeStyle = '#fff';
-                    tempContext.strokeRect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
-                    
-                    const backupImg = new Image();
-                    backupImg.src = tempCanvas.toDataURL();
-                    images[i] = backupImg;
-                    
-                    imagesLoaded++;
-                    if (imagesLoaded === POLITICIAN_IMAGES.length - 1) {
-                        loadingElement.style.display = 'none';
-                    }
-                };
-                images.push(img);
-            }
-            
+            // Формы фигур
             const SHAPES = [
                 [],
                 [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], // I
@@ -182,20 +339,37 @@
                 [[7, 7, 0], [0, 7, 7], [0, 0, 0]]                          // Z
             ];
             
+            // Фоновые цвета для блоков
+            const COLORS = [
+                null,
+                '#FF5252', // I
+                '#448AFF', // J
+                '#4CAF50', // L
+                '#FFC107', // O
+                '#9C27B0', // S
+                '#03A9F4', // T
+                '#FF9800'  // Z
+            ];
+            
             // Переменные игры
             let board = createMatrix(COLS, ROWS);
+            let nextPiece = null;
             let player = {
                 pos: {x: 0, y: 0},
                 matrix: null,
                 score: 0,
                 level: 1,
-                lines: 0
+                lines: 0,
+                next: null
             };
+            
             let dropCounter = 0;
             let dropInterval = 1000;
             let lastTime = 0;
             let gameRunning = false;
-            let requestId;
+            let gamePaused = false;
+            let requestId = null;
+            let animationId = null;
             
             // Создание матрицы
             function createMatrix(w, h) {
@@ -209,7 +383,10 @@
             // Случайная фигура
             function createPiece() {
                 const pieceIndex = Math.floor(Math.random() * 7) + 1;
-                return SHAPES[pieceIndex];
+                return {
+                    matrix: SHAPES[pieceIndex],
+                    type: pieceIndex
+                };
             }
             
             // Сброс доски
@@ -218,6 +395,7 @@
                 player.score = 0;
                 player.level = 1;
                 player.lines = 0;
+                nextPiece = createPiece();
                 updateScore();
                 playerReset();
                 gameOverElement.style.display = 'none';
@@ -225,9 +403,13 @@
             
             // Сброс игрока
             function playerReset() {
-                player.matrix = createPiece();
+                player.matrix = nextPiece.matrix;
+                player.type = nextPiece.type;
                 player.pos.y = 0;
                 player.pos.x = Math.floor(COLS / 2) - Math.floor(player.matrix[0].length / 2);
+                
+                nextPiece = createPiece();
+                drawNextPiece();
                 
                 // Проверка окончания игры
                 if (collide(board, player)) {
@@ -238,8 +420,11 @@
             // Конец игры
             function gameOver() {
                 gameRunning = false;
+                gamePaused = false;
                 cancelAnimationFrame(requestId);
-                gameOverElement.style.display = 'block';
+                
+                finalScoreElement.textContent = player.score;
+                gameOverElement.style.display = 'flex';
             }
             
             // Проверка столкновений
@@ -263,7 +448,7 @@
                 player.matrix.forEach((row, y) => {
                     row.forEach((value, x) => {
                         if (value !== 0) {
-                            board[y + player.pos.y][x + player.pos.x] = value;
+                            board[y + player.pos.y][x + player.pos.x] = player.type;
                         }
                     });
                 });
@@ -361,7 +546,7 @@
                     player.score += [0, 40, 100, 300, 1200][rowCount] * player.level;
                     player.lines += rowCount;
                     player.level = Math.floor(player.lines / 10) + 1;
-                    dropInterval = 1000 * (1 - (player.level - 1) * 0.1);
+                    dropInterval = 1000 * Math.pow(0.8, player.level - 1);
                 }
             }
             
@@ -372,39 +557,117 @@
                 linesElement.textContent = player.lines;
             }
             
-            // Отрисовка
-            function draw() {
-                context.fillStyle = '#000';
-                context.fillRect(0, 0, canvas.width, canvas.height);
+            // Отрисовка следующей фигуры
+            function drawNextPiece() {
+                nextPieceCtx.fillStyle = '#0f3460';
+                nextPieceCtx.fillRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
                 
-                drawMatrix(board, {x: 0, y: 0});
-                drawMatrix(player.matrix, player.pos);
-            }
-            
-            // Отрисовка матрицы с изображениями политиков
-            function drawMatrix(matrix, offset) {
+                const matrix = nextPiece.matrix;
+                const type = nextPiece.type;
+                
+                // Центрирование фигуры
+                const offsetX = (nextPieceCanvas.width - matrix[0].length * NEXT_BLOCK_SIZE) / 2;
+                const offsetY = (nextPieceCanvas.height - matrix.length * NEXT_BLOCK_SIZE) / 2;
+                
                 matrix.forEach((row, y) => {
                     row.forEach((value, x) => {
                         if (value !== 0) {
-                            const img = images[value];
-                            if (img) {
-                                context.drawImage(
-                                    img,
-                                    (x + offset.x) * BLOCK_SIZE,
-                                    (y + offset.y) * BLOCK_SIZE,
-                                    BLOCK_SIZE,
-                                    BLOCK_SIZE
-                                );
-                            }
+                            // Фон ячейки
+                            nextPieceCtx.fillStyle = COLORS[type];
+                            nextPieceCtx.fillRect(
+                                offsetX + x * NEXT_BLOCK_SIZE,
+                                offsetY + y * NEXT_BLOCK_SIZE,
+                                NEXT_BLOCK_SIZE,
+                                NEXT_BLOCK_SIZE
+                            );
                             
-                            // Рамка вокруг изображения
-                            context.strokeStyle = '#fff';
-                            context.lineWidth = 1;
-                            context.strokeRect(
+                            // Рамка ячейки
+                            nextPieceCtx.strokeStyle = '#fff';
+                            nextPieceCtx.lineWidth = 1;
+                            nextPieceCtx.strokeRect(
+                                offsetX + x * NEXT_BLOCK_SIZE,
+                                offsetY + y * NEXT_BLOCK_SIZE,
+                                NEXT_BLOCK_SIZE,
+                                NEXT_BLOCK_SIZE
+                            );
+                            
+                            // Эмодзи
+                            nextPieceCtx.font = '20px Arial';
+                            nextPieceCtx.textAlign = 'center';
+                            nextPieceCtx.textBaseline = 'middle';
+                            nextPieceCtx.fillStyle = '#fff';
+                            nextPieceCtx.fillText(
+                                EMOJI[type],
+                                offsetX + x * NEXT_BLOCK_SIZE + NEXT_BLOCK_SIZE / 2,
+                                offsetY + y * NEXT_BLOCK_SIZE + NEXT_BLOCK_SIZE / 2
+                            );
+                        }
+                    });
+                });
+            }
+            
+            // Отрисовка
+            function draw() {
+                ctx.fillStyle = '#16213e';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Отрисовка сетки
+                ctx.strokeStyle = '#1e2446';
+                ctx.lineWidth = 1;
+                
+                for (let i = 0; i <= ROWS; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * BLOCK_SIZE);
+                    ctx.lineTo(canvas.width, i * BLOCK_SIZE);
+                    ctx.stroke();
+                }
+                
+                for (let i = 0; i <= COLS; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * BLOCK_SIZE, 0);
+                    ctx.lineTo(i * BLOCK_SIZE, canvas.height);
+                    ctx.stroke();
+                }
+                
+                drawMatrix(board, {x: 0, y: 0});
+                drawMatrix(player.matrix, player.pos, player.type);
+            }
+            
+            // Отрисовка матрицы с эмодзи
+            function drawMatrix(matrix, offset, type = null) {
+                matrix.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value !== 0) {
+                            const cellType = type || value;
+                            
+                            // Фон ячейки
+                            ctx.fillStyle = COLORS[cellType];
+                            ctx.fillRect(
                                 (x + offset.x) * BLOCK_SIZE,
                                 (y + offset.y) * BLOCK_SIZE,
                                 BLOCK_SIZE,
                                 BLOCK_SIZE
+                            );
+                            
+                            // Рамка ячейки
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(
+                                (x + offset.x) * BLOCK_SIZE,
+                                (y + offset.y) * BLOCK_SIZE,
+                                BLOCK_SIZE,
+                                BLOCK_SIZE
+                            );
+                            
+                            // Эмодзи
+                            ctx.font = '20px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = '#fff';
+                            ctx.fillText(
+                                EMOJI[cellType],
+                                (x + offset.x) * BLOCK_SIZE + BLOCK_SIZE / 2,
+                                (y + offset.y) * BLOCK_SIZE + BLOCK_SIZE / 2
                             );
                         }
                     });
@@ -413,7 +676,7 @@
             
             // Игровой цикл
             function update(time = 0) {
-                if (!gameRunning) {
+                if (!gameRunning || gamePaused) {
                     return;
                 }
                 
@@ -429,9 +692,22 @@
                 requestId = requestAnimationFrame(update);
             }
             
+            // Пауза
+            function togglePause() {
+                if (!gameRunning) return;
+                
+                gamePaused = !gamePaused;
+                pauseButton.textContent = gamePaused ? 'Продолжить' : 'Пауза';
+                
+                if (!gamePaused) {
+                    lastTime = performance.now();
+                    update();
+                }
+            }
+            
             // Управление
             document.addEventListener('keydown', event => {
-                if (!gameRunning) {
+                if (!gameRunning || gamePaused) {
                     return;
                 }
                 
@@ -451,6 +727,9 @@
                     case 32: // Пробел (мгновенное падение)
                         playerDropToBottom();
                         break;
+                    case 80: // P (пауза)
+                        togglePause();
+                        break;
                 }
             });
             
@@ -459,20 +738,31 @@
                 if (!gameRunning) {
                     resetGame();
                     gameRunning = true;
+                    gamePaused = false;
+                    pauseButton.textContent = 'Пауза';
+                    lastTime = performance.now();
                     update();
                 }
             });
+            
+            // Пауза
+            pauseButton.addEventListener('click', togglePause);
             
             // Перезапуск игры
             restartButton.addEventListener('click', () => {
                 resetGame();
                 gameRunning = true;
+                gamePaused = false;
+                pauseButton.textContent = 'Пауза';
+                lastTime = performance.now();
                 update();
             });
             
             // Инициализация
+            nextPiece = createPiece();
+            drawNextPiece();
             draw();
         });
     </script>
 </body>
-</html> 
+</html>
